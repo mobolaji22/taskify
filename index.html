@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskify - Task Management</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <i class="fas fa-check-circle"></i>
+                <h1>Taskify</h1>
+            </div>
+            <div class="user-section">
+                <div id="user-auth" class="hidden">
+                    <span id="username-display"></span>
+                    <button id="logout-btn">Logout</button>
+                </div>
+                <div id="login-register" class="">
+                    <button id="login-btn">Login</button>
+                    <button id="register-btn">Register</button>
+                </div>
+                <button id="theme-toggle" class="theme-toggle" title="Toggle Dark Mode">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="auth-container hidden" id="auth-container">
+            <div class="auth-form" id="login-form">
+                <h2>Login</h2>
+                <form id="login-form-element">
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit">Login</button>
+                </form>
+                <p>Don't have an account? <a href="#" id="switch-to-register">Register</a></p>
+            </div>
+            
+            <div class="auth-form hidden" id="register-form">
+                <h2>Register</h2>
+                <form id="register-form-element">
+                    <div class="form-group">
+                        <label for="register-name">Name</label>
+                        <input type="text" id="register-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Email</label>
+                        <input type="email" id="register-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Password</label>
+                        <input type="password" id="register-password" required>
+                    </div>
+                    <button type="submit">Register</button>
+                </form>
+                <p>Already have an account? <a href="#" id="switch-to-login">Login</a></p>
+            </div>
+        </div>
+
+        <main class="main-content">
+            <aside class="sidebar">
+                <div class="filters">
+                    <h3>Filters</h3>
+                    <ul>
+                        <li data-filter="all" class="active">All Tasks</li>
+                        <li data-filter="today">Today</li>
+                        <li data-filter="upcoming">Upcoming</li>
+                        <li data-filter="completed">Completed</li>
+                    </ul>
+                </div>
+                
+                <div class="categories">
+                    <h3>Categories</h3>
+                    <ul id="categories-list">
+                        <li data-category="work">Work</li>
+                        <li data-category="personal">Personal</li>
+                        <li data-category="errands">Errands</li>
+                    </ul>
+                    <div class="add-category">
+                        <input type="text" id="new-category" placeholder="New category">
+                        <button id="add-category-btn">Add</button>
+                    </div>
+                </div>
+                
+                <div class="analytics">
+                    <h3>Analytics</h3>
+                    <div class="stat">
+                        <span>Completed today:</span>
+                        <span id="completed-today">0</span>
+                    </div>
+                    <div class="stat">
+                        <span>Pending:</span>
+                        <span id="pending-count">0</span>
+                    </div>
+                </div>
+            </aside>
+            
+            <section class="task-area">
+                <div class="task-header">
+                    <h2 id="current-filter">All Tasks</h2>
+                    <div class="task-controls">
+                        <div class="sort-options">
+                            <label for="sort-by">Sort by:</label>
+                            <select id="sort-by">
+                                <option value="date">Due Date</option>
+                                <option value="priority">Priority</option>
+                                <option value="status">Status</option>
+                            </select>
+                        </div>
+                        <button id="add-task-btn" class="primary-btn">+ Add Task</button>
+                    </div>
+                </div>
+                
+                <div class="task-list" id="task-list">
+                    <!-- Tasks will be populated here dynamically -->
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- Task Modal -->
+    <div class="modal hidden" id="task-modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 id="modal-title">Add New Task</h2>
+            <form id="task-form">
+                <input type="hidden" id="task-id">
+                <div class="form-group">
+                    <label for="task-title">Title</label>
+                    <input type="text" id="task-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="task-description">Description</label>
+                    <textarea id="task-description"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="task-due-date">Due Date</label>
+                        <input type="date" id="task-due-date">
+                    </div>
+                    <div class="form-group">
+                        <label for="task-priority">Priority</label>
+                        <select id="task-priority">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="task-status">Status</label>
+                        <select id="task-status">
+                            <option value="pending">Pending</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="task-category">Category</label>
+                        <select id="task-category">
+                            <option value="work">Work</option>
+                            <option value="personal">Personal</option>
+                            <option value="errands">Errands</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="cancel-task">Cancel</button>
+                    <button type="submit" id="save-task">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/models/user.js"></script>
+    <script src="js/models/task.js"></script>
+    <script src="js/services/storageService.js"></script>
+    <script src="js/views/taskView.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
