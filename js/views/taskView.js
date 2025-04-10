@@ -1,8 +1,9 @@
 class TaskView {
-    constructor(taskManager) {
+    constructor(taskManager, updateAnalyticsCallback) {
         this.taskManager = taskManager;
         this.taskListElement = document.getElementById('task-list');
         this.categorySelectElement = document.getElementById('task-category');
+        this.updateAnalyticsCallback = updateAnalyticsCallback;
     }
     
     renderTasks(tasks) {
@@ -102,8 +103,10 @@ class TaskView {
         statusBadge.className = `task-status status-${task.status}`;
         statusBadge.textContent = task.status.replace('-', ' ');
         
-        // Update analytics
-        updateAnalytics();
+        // Update analytics using the callback
+        if (this.updateAnalyticsCallback) {
+            this.updateAnalyticsCallback();
+        }
     }
     
     openEditTaskModal(taskId) {
@@ -133,27 +136,73 @@ class TaskView {
             const taskElement = document.querySelector(`.task-item[data-id="${taskId}"]`);
             taskElement.remove();
             
-            // Update analytics
-            updateAnalytics();
+            // Update analytics using the callback
+            if (this.updateAnalyticsCallback) {
+                this.updateAnalyticsCallback();
+            }
         }
     }
     
     updateCategoriesDropdown(categories) {
-        // Clear existing options except the default ones
-        const defaultCategories = ['work', 'personal', 'errands'];
-        
-        // Keep only default categories
+        // Clear existing options
         this.categorySelectElement.innerHTML = '';
+        
+        // Default categories
+        const defaultCategories = ['work', 'personal', 'errands'];
         
         // Add all categories (default and custom)
         const allCategories = [...new Set([...defaultCategories, ...categories])];
         
+        // Sort categories alphabetically, but keep default categories at the top
+        allCategories.sort((a, b) => {
+            const aIsDefault = defaultCategories.includes(a);
+            const bIsDefault = defaultCategories.includes(b);
+            
+            if (aIsDefault && !bIsDefault) return -1;
+            if (!aIsDefault && bIsDefault) return 1;
+            return a.localeCompare(b);
+        });
+        
         allCategories.forEach(category => {
             const option = document.createElement('option');
             option.value = category;
-            option.textContent = category;
+            option.textContent = category.charAt(0).toUpperCase() + category.slice(1);
             this.categorySelectElement.appendChild(option);
         });
+    }
+    
+    // Add this method to TaskView
+    deleteCategory(categoryName) {
+        if (confirm(`Are you sure you want to delete the "${categoryName}" category?`)) {
+            const currentUser = userManager.getCurrentUser();
+            if (!currentUser) return false;
+            
+            // Get tasks in this category
+            const categoryTasks = this.taskManager.getUserTasks(currentUser.id)
+                .filter(task => task.category === categoryName);
+            
+            if (categoryTasks.length > 0) {
+                const reassign = confirm(`This category has ${categoryTasks.length} tasks. Would you like to reassign them to another category instead of deleting?`);
+                
+                if (reassign) {
+                    const newCategory = prompt("Enter the category to reassign tasks to:", "personal");
+                    if (newCategory) {
+                        // Update all tasks in this category
+                        categoryTasks.forEach(task => {
+                            this.taskManager.updateTask(task.id, { category: newCategory });
+                        });
+                    } else {
+                        return false; // User cancelled
+                    }
+                }
+            }
+            
+            // Reload tasks to reflect changes
+            loadTasks();
+            
+            return true;
+        }
+        return false;
     }
 }
 

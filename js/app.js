@@ -2,7 +2,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize managers
     const userManager = new UserManager();
     const taskManager = new TaskManager();
-    const taskView = new TaskView(taskManager);
+    
+    // Define updateAnalytics function before creating TaskView
+    function updateAnalytics() {
+        const currentUser = userManager.getCurrentUser();
+        if (!currentUser) return;
+        
+        document.getElementById('completed-today').textContent = taskManager.getCompletedToday(currentUser.id);
+        document.getElementById('pending-count').textContent = taskManager.getPendingCount(currentUser.id);
+    }
+    
+    // Create TaskView with updateAnalytics callback
+    const taskView = new TaskView(taskManager, updateAnalytics);
     
     // DOM elements
     const authContainer = document.getElementById('auth-container');
@@ -239,6 +250,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // Set current category
             currentCategory = e.target.dataset.category;
             
+            // Update the filter display text
+            const filterText = document.getElementById('current-filter');
+            if (currentCategory === 'all' || !currentCategory) {
+                filterText.textContent = 'All Tasks';
+            } else {
+                // Capitalize first letter of category
+                const categoryDisplay = currentCategory.charAt(0).toUpperCase() + currentCategory.slice(1);
+                filterText.textContent = `${categoryDisplay} Tasks`;
+            }
+            
             // Reload tasks
             loadTasks();
         }
@@ -254,14 +275,35 @@ document.addEventListener('DOMContentLoaded', function() {
     addCategoryBtn.addEventListener('click', function() {
         const categoryName = newCategoryInput.value.trim().toLowerCase();
         if (categoryName) {
-            // Add to UI
-            const categoryItem = document.createElement('li');
-            categoryItem.textContent = categoryName;
-            categoryItem.dataset.category = categoryName;
-            categoryItems.appendChild(categoryItem);
+            // Check if category already exists
+            const currentUser = userManager.getCurrentUser();
+            if (!currentUser) return;
+            
+            const existingCategories = taskManager.getUserCategories(currentUser.id);
+            if (existingCategories.includes(categoryName) || ['work', 'personal', 'errands', 'all'].includes(categoryName)) {
+                alert('This category already exists!');
+                return;
+            }
+            
+            // Create a dummy task with the new category to ensure it's saved
+            const dummyTask = taskManager.createTask(
+                currentUser.id,
+                'Category Creation',
+                'This task was created to add a new category',
+                null,
+                'medium',
+                'pending',
+                categoryName
+            );
+            
+            // Delete the dummy task
+            taskManager.deleteTask(dummyTask.id);
             
             // Clear input
             newCategoryInput.value = '';
+            
+            // Show notification
+            showNotification(`Category "${categoryName}" has been created.`);
             
             // Reload tasks to refresh category dropdowns
             loadUserCategories();
@@ -301,12 +343,118 @@ document.addEventListener('DOMContentLoaded', function() {
         loadUserCategories();
     }
     
+    // Add these functions after the existing functions in app.js
+    
+    // Setup category deletion functionality
+    function setupCategoryDeletion() {
+        const categoriesList = document.getElementById('categories-list');
+        
+        categoriesList.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            
+            // Check if clicked on a category item
+            const categoryItem = e.target.closest('li[data-category]');
+            if (!categoryItem) return;
+            
+            const categoryName = categoryItem.dataset.category;
+            
+            // Don't allow deletion of default categories
+            if (['all', 'work', 'personal', 'errands'].includes(categoryName)) {
+                alert('Default categories cannot be deleted.');
+                return;
+            }
+            
+            // Delete the category
+            taskView.deleteCategory(categoryName);
+        });
+        
+        // Add tooltip to inform users
+        const categoryHeader = document.querySelector('.categories h3');
+        if (categoryHeader) {
+            categoryHeader.title = "Right-click on a custom category to delete it";
+        }
+    }
+    
+    // Check for old completed tasks
+    function checkOldCompletedTasks() {
+        const currentUser = userManager.getCurrentUser();
+        if (!currentUser) return;
+        
+        const deletedCount = taskManager.cleanupCompletedTasks(currentUser.id);
+        
+        if (deletedCount > 0) {
+            // Show notification
+            showNotification(`${deletedCount} completed task${deletedCount > 1 ? 's' : ''} older than 10 days ${deletedCount > 1 ? 'have' : 'has'} been automatically removed.`);
+            
+            // Reload tasks
+            loadTasks();
+        }
+    }
+    
+    // Helper function to show notifications
+    function showNotification(message, type = 'success', duration = 5000) {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <p>${message}</p>
+                <button class="close-notification">×</button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto-hide after duration
+        const hideTimeout = setTimeout(() => {
+            notification.classList.add('fade-out');
+            setTimeout(() => notification.remove(), 500);
+        }, duration);
+        
+        // Close button
+        const closeButton = notification.querySelector('.close-notification');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                clearTimeout(hideTimeout);
+                notification.remove();
+            });
+        }
+        
+        return notification;
+    }
+    
     function loadUserCategories() {
         const currentUser = userManager.getCurrentUser();
         if (!currentUser) return;
         
         const categories = taskManager.getUserCategories(currentUser.id);
         taskView.updateCategoriesDropdown(categories);
+        
+        // Update the categories list in the sidebar
+        const categoriesList = document.getElementById('categories-list');
+        
+        // Start with default categories
+        categoriesList.innerHTML = `
+            <li data-category="all" ${currentCategory === 'all' || !currentCategory ? 'class="active"' : ''}>All Categories</li>
+            <li data-category="work" ${currentCategory === 'work' ? 'class="active"' : ''}>Work</li>
+            <li data-category="personal" ${currentCategory === 'personal' ? 'class="active"' : ''}>Personal</li>
+            <li data-category="errands" ${currentCategory === 'errands' ? 'class="active"' : ''}>Errands</li>
+        `;
+        
+        // Add custom categories
+        categories.forEach(category => {
+            if (!['work', 'personal', 'errands'].includes(category)) {
+                const li = document.createElement('li');
+                li.dataset.category = category;
+                li.textContent = category;
+                
+                // Add active class if this is the current category
+                if (currentCategory === category) {
+                    li.classList.add('active');
+                }
+                
+                categoriesList.appendChild(li);
+            }
+        });
     }
     
     function updateAnalytics() {
@@ -316,4 +464,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('completed-today').textContent = taskManager.getCompletedToday(currentUser.id);
         document.getElementById('pending-count').textContent = taskManager.getPendingCount(currentUser.id);
     }
+    
+    // Setup category deletion
+    setupCategoryDeletion();
+    
+    // Check for old completed tasks on startup and every hour
+    checkOldCompletedTasks();
+    setInterval(checkOldCompletedTasks, 60 * 60 * 1000); // Check every hour
 });

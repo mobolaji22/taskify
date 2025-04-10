@@ -57,7 +57,27 @@ class TaskManager {
     
     loadTasks() {
         const tasksJSON = localStorage.getItem(this.storageKey);
-        this.tasks = tasksJSON ? JSON.parse(tasksJSON) : {};
+        const rawTasks = tasksJSON ? JSON.parse(tasksJSON) : {};
+        
+        // Convert plain objects back to Task instances
+        this.tasks = {};
+        for (const taskId in rawTasks) {
+            const taskData = rawTasks[taskId];
+            this.tasks[taskId] = new Task(
+                taskData.id,
+                taskData.userId,
+                taskData.title,
+                taskData.description,
+                taskData.dueDate,
+                taskData.priority,
+                taskData.status,
+                taskData.category
+            );
+            
+            // Restore dates
+            this.tasks[taskId].createdAt = new Date(taskData.createdAt);
+            this.tasks[taskId].updatedAt = new Date(taskData.updatedAt);
+        }
     }
     
     saveTasks() {
@@ -98,8 +118,8 @@ class TaskManager {
     getUserTasks(userId, filter = 'all', category = null) {
         const userTasks = Object.values(this.tasks).filter(task => task.userId === userId);
         
-        // Apply category filter if provided
-        let filteredTasks = category 
+        // Apply category filter if provided and not "all"
+        let filteredTasks = (category && category !== 'all') 
             ? userTasks.filter(task => task.category === category) 
             : userTasks;
         
@@ -178,6 +198,35 @@ class TaskManager {
             .filter(task => task.userId === userId)
             .forEach(task => categories.add(task.category));
         return Array.from(categories);
+    }
+    
+    // Add this method to the TaskManager class
+    cleanupCompletedTasks(userId) {
+        const tenDaysAgo = new Date();
+        tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+        
+        const oldCompletedTasks = Object.entries(this.tasks)
+            .filter(([_, task]) => {
+                if (task.userId !== userId || task.status !== 'completed') 
+                    return false;
+                
+                const completedDate = new Date(task.updatedAt);
+                return completedDate < tenDaysAgo;
+            });
+        
+        if (oldCompletedTasks.length > 0) {
+            // Delete old completed tasks
+            oldCompletedTasks.forEach(([taskId, _]) => {
+                delete this.tasks[taskId];
+            });
+            
+            this.saveTasks();
+            
+            // Return count for notification
+            return oldCompletedTasks.length;
+        }
+        
+        return 0;
     }
 }
 

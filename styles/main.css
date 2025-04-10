@@ -234,17 +234,40 @@ input:focus, select:focus, textarea:focus {
     margin-top: 0;
 }
 
+/* Add or update these styles for better category visualization */
 .sidebar ul li {
     padding: 0.5rem 0.75rem;
     margin: 0.25rem 0;
     border-radius: var(--radius);
     cursor: pointer;
     transition: var(--transition);
+    position: relative;
 }
 
-.sidebar ul li:hover, .sidebar ul li.active {
+.sidebar ul li.active {
     background-color: rgba(79, 109, 245, 0.1);
     color: var(--primary-color);
+    font-weight: 500;
+}
+
+.sidebar ul li.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 3px;
+    background-color: var(--primary-color);
+    border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.sidebar ul li:hover:not(.active) {
+    background-color: rgba(79, 109, 245, 0.05);
+}
+
+/* Style for category dropdown in task form */
+#task-category option {
+    padding: 8px;
 }
 
 .add-category {
